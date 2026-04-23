@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O'zbekiston To'lov Balansi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap');
+
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e2e5ea;
+  --text: #1a1d23;
+  --text-secondary: #5a6069;
+  --primary: #0f3d8c;
+  --primary-light: #e8eef7;
+  --accent: #d4a012;
+  --accent-light: #fdf4d9;
+  --positive: #0d7c3e;
+  --positive-bg: #e6f4ec;
+  --negative: #c41e1e;
+  --negative-bg: #fce8e8;
+  --chart-1: #0f3d8c;
+  --chart-2: #d4a012;
+  --chart-3: #2e7d6e;
+  --chart-4: #8b4f9f;
+  --chart-5: #c4552d;
+  --chart-6: #4a90d9;
+  --forecast-bg: rgba(212,160,18,0.08);
+  --forecast-border: rgba(212,160,18,0.4);
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.header {
+  background: linear-gradient(135deg, #0a2e6b 0%, #0f3d8c 50%, #1a5ab8 100%);
+  color: #fff;
+  padding: 28px 40px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(15,61,140,0.3);
+}
+
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header h1 {
+  font-family: 'Source Serif 4', serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  opacity: 0.7;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.header-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.lang-btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s;
+}
+.lang-btn:hover { background: rgba(255,255,255,0.2); }
+.lang-btn.active { background: rgba(255,255,255,0.95); color: var(--primary); }
+
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+select, .period-btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+select option { color: #333; background: #fff; }
+select:hover, .period-btn:hover { background: rgba(255,255,255,0.2); }
+.period-btn.active { background: rgba(255,255,255,0.95); color: var(--primary); }
+
+.main { padding: 24px 40px 60px; max-width: 1600px; margin: 0 auto; }
+
+/* KPI Cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+}
+
+.kpi-card.ca::before { background: var(--chart-1); }
+.kpi-card.fa::before { background: var(--chart-2); }
+.kpi-card.tb::before { background: var(--chart-3); }
+.kpi-card.fdi::before { background: var(--chart-4); }
+.kpi-card.ka::before { background: var(--chart-5); }
+
+.kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-family: 'Source Serif 4', serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.kpi-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+}
+
+.kpi-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.kpi-change.positive { background: var(--positive-bg); color: var(--positive); }
+.kpi-change.negative { background: var(--negative-bg); color: var(--negative); }
+
+.kpi-period {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.kpi-sparkline {
+  height: 40px;
+  margin-top: 8px;
+}
+
+/* Sections */
+.section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 320px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+
+/* Forecast badge */
+.forecast-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-light);
+  color: #8b6914;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.forecast-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+/* Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--primary);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.data-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table tr:hover td { background: #f8f9fb; }
+
+.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.data-table .pos { color: var(--positive); }
+.data-table .neg { color: var(--negative); }
+
+.data-table .indent-1 { padding-left: 28px; }
+.data-table .indent-2 { padding-left: 48px; }
+.data-table .total-row { font-weight: 700; background: var(--primary-light); }
+
+/* Nav tabs */
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  background: #eef0f4;
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.nav-tab {
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  border: none;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-secondary);
+}
+
+.nav-tab:hover { background: rgba(255,255,255,0.6); }
+.nav-tab.active {
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .main { padding: 16px 20px 40px; }
+  .header { padding: 20px; }
+  .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .header h1 { font-size: 18px; }
+  .kpi-value { font-size: 22px; }
+  .kpi-grid { grid-template-columns: 1fr; }
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kpi-card, .section {
+  animation: fadeUp 0.4s ease-out both;
+}
+
+.kpi-card:nth-child(2) { animation-delay: 0.05s; }
+.kpi-card:nth-child(3) { animation-delay: 0.1s; }
+.kpi-card:nth-child(4) { animation-delay: 0.15s; }
+.kpi-card:nth-child(5) { animation-delay: 0.2s; }
+
+.legend-custom {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1 id="mainTitle">O'zbekiston Respublikasi To'lov Balansi</h1>
+      <div class="header-subtitle" id="mainSubtitle">Markaziy bank ma'lumotlari asosida | 2005 — 2025 (prognoz: 2026-2028)</div>
+    </div>
+    <div class="header-controls">
+      <button class="lang-btn active" onclick="setLang('uz')">O'zbek</button>
+      <button class="lang-btn" onclick="setLang('en')">English</button>
+      <button class="lang-btn" onclick="setLang('ru')">Русский</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" id="labelPeriod">Davr:</span>
+      <button class="period-btn active" onclick="setPeriod('quarterly')" id="btnQuarterly">Choraklik</button>
+      <button class="period-btn" onclick="setPeriod('annual')" id="btnAnnual">Yillik</button>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label" id="labelYear">Yil:</span>
+      <select id="yearSelect" onchange="setYear(this.value)"></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label" id="labelUnit">Birlik:</span>
+      <select id="unitSelect" onchange="setUnit(this.value)">
+        <option value="mln">mln USD</option>
+        <option value="mlrd">mlrd USD</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- KPI Cards -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Nav Tabs -->
+  <div class="nav-tabs" id="navTabs"></div>
+
+  <!-- Tab Content -->
+  <div id="tabContent"></div>
+</div>
+
+<div class="footer" id="footerText">
+  Ma'lumot manbai: O'zbekiston Respublikasi Markaziy banki | Prognozlar makroiqtisodiy modellar asosida tuzilgan
+</div>
+
+<script>
+// ===== DATA =====
+const RAW_DATA = {"quarters":["2005-I chorak","2005-II chorak","2005-III chorak","2005-IV chorak","2006-I chorak","2006-II chorak","2006-III chorak","2006-IV chorak","2007-I chorak","2007-II chorak","2007-III chorak","2007-IV chorak","2008-I chorak","2008-II chorak","2008-III chorak","2008-IV chorak","2009-I chorak","2009-II chorak","2009-III chorak","2009-IV chorak","2010-I chorak","2010-II chorak","2010-III chorak","2010-IV chorak","2011-I chorak","2011-II chorak","2011-III chorak","2011-IV chorak","2012-I chorak","2012-II chorak","2012-III chorak","2012-IV chorak","2013-I chorak","2013-II chorak","2013-III chorak","2013-IV chorak","2014-I chorak","2014-II chorak","2014-III chorak","2014-IV chorak","2015-I chorak","2015-II chorak","2015-III chorak","2015-IV chorak","2016-I chorak","2016-II chorak","2016-III chorak","2016-IV chorak","2017-I chorak","2017-II chorak","2017-III chorak","2017-IV chorak","2018-I chorak","2018-II chorak","2018-III chorak","2018-IV chorak","2019-I chorak","2019-II chorak","2019-III chorak","2019-IV chorak","2020-I chorak","2020-II chorak","2020-III chorak","2020-IV chorak","2021-I chorak","2021-II chorak","2021-III chorak","2021-IV chorak","2022-I chorak","2022-II chorak","2022-III chorak","2022-IV chorak","2023-I chorak","2023-II chorak","2023-III chorak","2023-IV chorak","2024-I chorak","2024-II chorak","2024-III chorak","2024-IV chorak","2025-I chorak","2025-II chorak","2025-III chorak","2025-IV chorak"],"series":{"current_account":[246.4,507.31,-21.26,415.23,283.06,282.07,398.44,766.53,16.72,765.53,266.97,759.84,393.33,1289.14,2042.14,-540.51,-187.03,650.51,1232.38,65.3,-187.03,650.51,1232.38,65.3,311.36,447.43,1048.13,471.72,402.13,599.4,2132.23,-350.26,-65.21,246.87,527.47,499.86,-258.11,-246.19,1117.64,702.42,-80.4,301.65,1597.23,257.46,176.91,-382.53,-170.17,1271.48,-271.39,73.41,1260.66,415.2,-225.22,-1388.22,-1545.97,-433.75,-1047.75,-713.69,-16.3,-1593.49,-893.79,-1025.36,1624.68,-2733.42,-2135.33,-1203.63,-1869.2,310.63,-1280.58,-200.52,27.7,-1392.78,-1179.03,-1673.64,-1304.69,-3639.71,-2050.5,-806.79,-242.13,-2623.7,-387.01,392.57,-57.56,-5732.2],"goods_export":[1182.58,1328.0,890.08,1361.0,1214.48,1209.35,1415.6,1822.61,1479.62,2194.74,1778.28,2523.72,2139.17,3162.83,3658.36,1282.55,1948.37,2972.34,2976.04,2871.55,2245.75,2607.93,2888.05,2906.21,2618.91,2984.23,4323.32,2478.63,2327.87,2495.96,3091.71,2933.01,2068.39,2632.96,3367.91,3080.7,2331.22,2207.86,2861.04,3156.1,2628.68,1776.09,2204.59,2872.1,1682.62,1837.4,2169.86,2955.28,1727.75,2371.52,3392.07,2670.2,2956.99,2350.8,1976.51,4101.29,3045.02,3414.12,4146.6,3292.88,2609.29,2579.25,5616.15,2027.48,1947.72,4025.15,2536.15,5632.99,5225.46,3236.29,3649.47,4537.98,4981.77,5096.88,4191.34,5346.59,5331.37,4574.39,4975.71,4744.61,6241.33,6431.94,6878.85,3472.74],"goods_import":[819.15,787.75,881.4,914.61,875.31,1103.04,1100.69,1104.65,1420.55,1559.04,1600.04,1697.03,1774.16,2080.98,2302.94,2768.3,2101.72,2224.61,2124.25,2675.17,2022.05,2511.52,2492.1,2959.3,2441.66,3159.52,3212.95,3658.9,2877.46,3062.4,3935.91,3469.88,2960.13,3882.21,3699.33,3420.37,3239.34,3294.47,3266.0,3714.29,2952.93,3050.4,3232.51,2340.12,2307.13,2699.67,2923.61,3106.86,2627.45,3150.59,3379.25,3220.03,3727.85,4519.69,4488.9,5516.01,4741.77,5291.68,5528.64,5627.86,4291.36,4290.12,4998.28,5468.55,4708.65,5925.22,5865.51,6409.3,6518.16,6370.48,7205.27,8215.25,7687.17,8490.41,7760.57,10537.41,8063.44,7991.52,8217.8,8887.21,7669.42,9039.96,10407.29,11429.81],"services_export":[178.92,203.67,211.16,225.89,210.85,266.74,266.25,258.95,288.65,332.32,363.39,341.21,320.65,420.1,397.7,399.96,344.8,334.48,355.8,332.56,262.96,429.02,357.05,366.36,319.96,555.34,471.44,496.2,468.56,531.81,532.85,602.75,563.49,607.1,673.02,600.28,456.83,655.23,597.67,661.49,584.45,568.2,610.28,601.05,451.28,434.43,499.87,519.17,502.24,531.44,591.52,625.49,572.79,687.49,750.79,738.47,642.08,797.04,859.46,828.53,607.17,315.71,349.93,431.47,430.23,574.33,676.2,619.27,648.56,1042.46,1367.24,1258.39,986.77,1357.63,1701.83,1386.78,1203.24,1769.2,1790.18,1784.6,1839.05,2309.81,2700.34,2424.86],"services_import":[369.08,374.15,401.79,438.18,364.43,400.21,443.58,435.67,490.24,506.85,541.83,591.85,588.03,609.08,641.5,636.49,589.2,641.91,616.09,788.64,605.27,746.77,640.06,662.65,685.02,778.38,837.19,814.52,717.88,899.8,898.17,946.54,700.17,839.7,907.92,931.25,651.75,739.91,736.14,758.27,651.72,761.78,941.61,736.81,767.2,891.88,952.37,832.29,844.72,1004.27,1151.95,1091.88,1142.63,1249.17,1417.35,1381.95,1197.61,1319.93,1468.33,1411.91,1112.32,705.38,794.36,977.69,895.59,1266.48,1382.82,1482.32,1644.43,1661.38,2018.3,2010.04,1784.36,1919.97,2147.84,2318.68,2368.99,2446.48,2710.81,2937.91,3126.89,3174.41,3457.36,3876.8],"goods_services_balance":[173.27,369.77,-181.94,234.11,185.59,-27.15,137.57,541.24,-142.52,461.17,-0.2,576.05,97.63,892.87,1111.62,-1722.28,-397.75,440.29,591.49,-259.69,-118.62,-221.34,112.95,-349.38,-187.81,-398.34,744.62,-1498.58,-798.9,-934.43,-1209.52,-880.67,-1028.42,-1481.86,-566.32,-670.64,-1103.04,-1171.28,-543.42,-654.96,-391.52,-1467.89,-1359.25,396.23,-940.43,-1319.71,-1206.25,-464.7,-1242.19,-1251.9,-547.6,-1016.23,-1340.7,-2730.57,-3178.94,-2058.2,-2252.28,-2400.45,-1990.91,-2918.36,-2187.22,-2100.55,173.43,-3987.29,-3226.29,-2592.22,-4035.99,-1639.35,-2288.57,-3753.1,-4206.86,-4428.92,-3502.98,-3955.87,-4015.24,-6122.72,-3897.82,-4094.41,-4162.71,-5295.92,-2715.93,-3472.62,-4285.46,-9409.01],"financial_account":[56.22,281.97,-22.83,119.34,188.66,409.33,363.62,82.87,209.5,-110.56,-104.8,-205.73,-181.65,29.46,114.02,-1070.01,-161.87,-333.9,-444.02,-360.48,146.34,-368.5,197.91,187.71,-38.65,192.57,175.83,-580.7,-110.64,3.18,422.83,133.68,-122.29,-1056.68,41.93,-205.27,413.57,28.67,1567.81,-510.3,-602.9,307.63,125.82,925.02,-55.75,-918.39,1164.17,-206.21,33.66,-555.49,122.37,-273.87,-433.06,-185.23,-119.91,-578.62,-2316.89,-768.41,-985.12,-2398.16,-1323.58,-1545.8,431.18,-3089.73,-844.16,-2119.1,-1502.89,-1452.45,-1106.88,-4.33,2212.04,-1550.74,333.21,-637.07,-1948.88,-4586.72,-496.08,-1935.11,-1143.18,-3688.89,-2759.68,113.21,-1909.06,-6756.64],"fdi_assets":[0.9,0.63,0.49,0.52,0.48,0.48,0.49,0.69,0.51,0.57,0.6,0.6,0.53,0.65,0.63,0.76,0.58,0.56,0.57,2.61,1.08,0.62,0.62,0.62,1.67,0.62,0.71,0.64,0.7,1.03,0.68,0.67,0.68,2.36,0.64,0.63,0.68,2.46,0.64,0.64,1.21,2.01,0.63,0.72,0.63,1.1,2.55,1.54,0.73,3.65,3.19,0.59,0.0,0.69,0.61,0.51,0.99,0.94,0.78,0.64,9.33,0.68,0.64,0.66,0.61,0.63,0.63,0.64,2.07,0.62,0.64,0.75,9.55,0.85,0.68,0.65,4.65,5.72,3.63,22.7,3.45,86.81,56.5,11.43],"fdi_liabilities":[24.91,82.14,64.22,42.22,38.21,38.85,61.43,68.66,56.58,195.42,209.3,206.2,56.15,144.32,219.94,127.55,63.23,145.54,111.14,293.18,704.96,493.11,109.94,354.74,334.36,252.66,195.41,832.62,107.52,271.24,199.56,165.92,125.47,165.08,336.78,64.24,26.11,328.87,129.95,323.74,226.22,172.14,235.16,407.68,302.11,367.98,250.14,742.66,572.74,450.33,503.24,272.0,427.9,-1.74,127.77,70.76,221.26,832.15,448.88,814.2,244.65,448.32,367.43,667.86,437.33,888.85,550.62,403.49,302.33,594.1,856.65,904.28,203.86,960.69,593.14,398.66,380.09,740.85,552.22,1301.58,761.74,785.26,1209.57,1641.86],"capital_account":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.0,2.0,0,2.0,0,0,0,0,7.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.47,5.61,3.02,2.52,7.89,24.98,63.25,3.64,28.12,5.22,69.69,40,135.12,34.61,77.14,7.13,0.15,15,10,0,1.75,2.11,0.15,28.22,8.19,1.23,2.14,10.69,1.21,1.62,5.11,0.49,0.31,0.18,5.52,2.32,0.78,7.71,2.11,2.4],"overall_balance":[-94.18,-195.13,61.14,-373.32,-34.1,48.2,-161.25,-567.08,41.3,-701.06,-185.27,-772.7,-482.29,-965.91,-1631.42,-700.13,217.14,-697.9,-1795.31,-130.16,10.83,-631.2,-571.4,-63.6,701.52,-670.91,-1393.14,241.05,391.85,28.96,-409.3,54.8,19.92,96.91,-141.05,-721.5,-131.31,380.1,-32.04,150.85,-539.49,335.42,102.2,-115.91,70.37,-18.5,-353.02,-251.26,355.88,158.96,-543.09,284.25,-384.53,604.05,1352.1,-7.95,-774.96,403.6,-290.73,-744.5,-0.69,349.13,-1972.87,227.82,1288.4,-506.71,817.25,-1132.53,-94.36,-190.56,1711.79,-102.71,1548.95,473.3,2640.02,-1971.33,1052.79,-247.73,-219.81,26.12,-1829.99,855.47,-608.97,-439.51],"reserve_assets":[87.81,189.02,-61.16,367.37,34.07,-48.2,161.25,567.08,-41.3,701.06,185.27,772.7,482.29,965.91,1631.42,700.13,-217.14,697.9,1795.31,130.16,-10.83,631.2,571.4,63.6,701.52,670.91,1393.14,-241.05,-391.85,-28.96,409.3,-54.8,-19.92,-96.91,141.05,721.5,131.31,-380.1,32.04,-150.85,539.49,-335.42,-102.2,115.91,-70.37,18.5,353.02,251.26,-355.88,-158.96,543.09,-284.25,384.53,-604.05,-1352.1,7.95,774.96,-403.6,290.73,744.5,0.69,25.51,1973.01,-227.81,-1288.43,506.72,-817.25,1132.53,94.4,190.77,-1711.41,103.19,-1548.74,-473.09,-2670.79,1940.79,-1083.45,217.14,188.77,-56.75,1799.89,-886.78,608.97,426.94],"errors_omissions":[-95.99,-30.21,-62.7,77.43,-60.29,79.06,126.42,-116.59,151.48,-175.03,-186.51,-192.87,-92.69,-293.77,-296.7,170.63,-192.98,-288.5,118.91,-297.63,-175.85,-184.72,-278.83,-220.41,253.73,264.09,-563.26,-471.5,-437.28,-272.66,304.66,-420.97,115.9,-907.4,-934.66,-186.19,625.28,-653.08,2.62,-918.61,-240.32,354.74,193.79,-230.56,256.33,-602.19,1280.25,-625.01,-58.71,-812.84,-658.46,-976.96,148.57,593.72,4.27,-176.92,-629.3,-492.94,-755.22,-67.3,-429.25,-884.58,769.37,-584.13,1.02,-410.87,-451.1,-658.77,259.87,385.53,470.42,-65.94,-37.93,561.66,-3289.32,1023.82,501.33,-880.77,-686.76,-1093.62,-543.46,-1142.54,-1244.64,-587.33]}};
+
+// ===== TRANSLATIONS =====
+const T = {
+  uz: {
+    title: "O'zbekiston Respublikasi To'lov Balansi",
+    subtitle: "Markaziy bank ma'lumotlari asosida | 2005 — 2025 (prognoz: 2026–2028)",
+    period: "Davr:", quarterly: "Choraklik", annual: "Yillik",
+    year: "Yil:", unit: "Birlik:", allYears: "Barcha yillar",
+    ca: "Joriy operatsiyalar hisobi", fa: "Moliyaviy hisob",
+    tb: "Tovarlar va xizmatlar balansi", fdi: "To'g'ridan-to'g'ri investitsiyalar",
+    ka: "Kapital operatsiyalar hisobi",
+    mln: "mln USD", mlrd: "mlrd USD",
+    tab_overview: "Umumiy ko'rsatkichlar", tab_trade: "Tashqi savdo",
+    tab_financial: "Moliyaviy hisob", tab_forecast: "Prognoz",
+    tab_table: "Batafsil jadval",
+    export: "Eksport", import: "Import", balance: "Saldo",
+    goods: "Tovarlar", services: "Xizmatlar",
+    fdi_in: "Kirib kelgan TI", fdi_out: "Chiqib ketgan TI", fdi_net: "Sof TI",
+    forecast: "Prognoz", actual: "Haqiqiy",
+    footer: "Ma'lumot manbai: O'zbekiston Respublikasi Markaziy banki | Prognozlar makroiqtisodiy modellar asosida tuzilgan",
+    overall: "Umumiy balans", reserves: "Zaxira aktivlari",
+    errors: "Sof xatolar va kamomadlar",
+    change: "o'zgarish",
+    goods_exp: "Tovarlar eksporti", goods_imp: "Tovarlar importi",
+    serv_exp: "Xizmatlar eksporti", serv_imp: "Xizmatlar importi",
+    primary_inc: "Birlamchi daromadlar (sof)", secondary_inc: "Ikkilamchi daromadlar (sof)",
+    portfolio: "Portfel investitsiyalar", other_inv: "Boshqa investitsiyalar",
+    forecastMethod: "Prognoz metodologiyasi",
+    forecastDesc: "Prognozlar eksponensial tekislash va trend ekstrapolyatsiyasi modellariga asoslangan. 8 choraklik o'rtacha trend va mavsumiy koeffitsientlar hisobga olingan.",
+    confidence: "Ishonch oralig'i",
+  },
+  en: {
+    title: "Balance of Payments of the Republic of Uzbekistan",
+    subtitle: "Based on Central Bank data | 2005 — 2025 (forecast: 2026–2028)",
+    period: "Period:", quarterly: "Quarterly", annual: "Annual",
+    year: "Year:", unit: "Unit:", allYears: "All years",
+    ca: "Current Account", fa: "Financial Account",
+    tb: "Goods & Services Balance", fdi: "Foreign Direct Investment",
+    ka: "Capital Account",
+    mln: "mln USD", mlrd: "bln USD",
+    tab_overview: "Key Indicators", tab_trade: "External Trade",
+    tab_financial: "Financial Account", tab_forecast: "Forecast",
+    tab_table: "Detailed Table",
+    export: "Export", import: "Import", balance: "Balance",
+    goods: "Goods", services: "Services",
+    fdi_in: "FDI Inward", fdi_out: "FDI Outward", fdi_net: "Net FDI",
+    forecast: "Forecast", actual: "Actual",
+    footer: "Data source: Central Bank of the Republic of Uzbekistan | Forecasts based on macroeconomic models",
+    overall: "Overall Balance", reserves: "Reserve Assets",
+    errors: "Net Errors & Omissions",
+    change: "change",
+    goods_exp: "Goods Export", goods_imp: "Goods Import",
+    serv_exp: "Services Export", serv_imp: "Services Import",
+    primary_inc: "Primary Income (net)", secondary_inc: "Secondary Income (net)",
+    portfolio: "Portfolio Investment", other_inv: "Other Investment",
+    forecastMethod: "Forecast Methodology",
+    forecastDesc: "Forecasts are based on exponential smoothing and trend extrapolation models. 8-quarter moving average trends and seasonal coefficients are considered.",
+    confidence: "Confidence interval",
+  },
+  ru: {
+    title: "Платёжный баланс Республики Узбекистан",
+    subtitle: "На основе данных Центрального банка | 2005 — 2025 (прогноз: 2026–2028)",
+    period: "Период:", quarterly: "Квартальный", annual: "Годовой",
+    year: "Год:", unit: "Ед.:", allYears: "Все годы",
+    ca: "Счёт текущих операций", fa: "Финансовый счёт",
+    tb: "Баланс товаров и услуг", fdi: "Прямые иностранные инвестиции",
+    ka: "Счёт операций с капиталом",
+    mln: "млн USD", mlrd: "млрд USD",
+    tab_overview: "Ключевые показатели", tab_trade: "Внешняя торговля",
+    tab_financial: "Финансовый счёт", tab_forecast: "Прогноз",
+    tab_table: "Детальная таблица",
+    export: "Экспорт", import: "Импорт", balance: "Сальдо",
+    goods: "Товары", services: "Услуги",
+    fdi_in: "Входящие ПИИ", fdi_out: "Исходящие ПИИ", fdi_net: "Чистые ПИИ",
+    forecast: "Прогноз", actual: "Факт",
+    footer: "Источник: Центральный банк Республики Узбекистан | Прогнозы на основе макроэкономических моделей",
+    overall: "Общий баланс", reserves: "Резервные активы",
+    errors: "Чистые ошибки и пропуски",
+    change: "изм.",
+    goods_exp: "Экспорт товаров", goods_imp: "Импорт товаров",
+    serv_exp: "Экспорт услуг", serv_imp: "Импорт услуг",
+    primary_inc: "Первичные доходы (нетто)", secondary_inc: "Вторичные доходы (нетто)",
+    portfolio: "Портфельные инвестиции", other_inv: "Прочие инвестиции",
+    forecastMethod: "Методология прогнозирования",
+    forecastDesc: "Прогнозы основаны на моделях экспоненциального сглаживания и экстраполяции трендов. Учтены 8-квартальные скользящие средние и сезонные коэффициенты.",
+    confidence: "Доверительный интервал",
+  }
+};
+
+// ===== STATE =====
+let currentLang = 'uz';
+let currentPeriod = 'quarterly';
+let currentYear = 'all';
+let currentUnit = 'mln';
+let currentTab = 'overview';
+let charts = {};
+
+const t = (key) => T[currentLang][key] || key;
+
+// ===== HELPERS =====
+function parseQuarter(q) {
+  const m = q.match(/(\d{4})-(I{1,3}V?|IV)\s/);
+  if (!m) return null;
+  const year = parseInt(m[1]);
+  const rom = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+  return { year, q: rom[m[2]] || 1 };
+}
+
+function getYears() {
+  const years = new Set();
+  RAW_DATA.quarters.forEach(q => {
+    const p = parseQuarter(q);
+    if (p) years.add(p.year);
+  });
+  return [...years].sort();
+}
+
+function annualize(arr) {
+  const result = [];
+  for (let i = 0; i < arr.length; i += 4) {
+    const chunk = arr.slice(i, i + 4);
+    if (chunk.length === 4) {
+      result.push(Math.round((chunk[0] + chunk[1] + chunk[2] + chunk[3]) * 100) / 100);
+    }
+  }
+  return result;
+}
+
+function getLabels() {
+  if (currentPeriod === 'annual') {
+    const years = getYears();
+    return years;
+  }
+  return RAW_DATA.quarters.map(q => {
+    const p = parseQuarter(q);
+    return p ? `${p.year} Q${p.q}` : q;
+  });
+}
+
+function getSeries(key) {
+  let data = RAW_DATA.series[key] || [];
+  if (currentPeriod === 'annual') {
+    data = annualize(data);
+  }
+  if (currentYear !== 'all') {
+    const yr = parseInt(currentYear);
+    if (currentPeriod === 'annual') {
+      const years = getYears();
+      const idx = years.indexOf(yr);
+      return idx >= 0 ? [data[idx]] : [];
+    } else {
+      const indices = [];
+      RAW_DATA.quarters.forEach((q, i) => {
+        const p = parseQuarter(q);
+        if (p && p.year === yr) indices.push(i);
+      });
+      return indices.map(i => data[i]);
+    }
+  }
+  return data;
+}
+
+function getFilteredLabels() {
+  let labels = getLabels();
+  if (currentYear !== 'all') {
+    const yr = parseInt(currentYear);
+    if (currentPeriod === 'annual') {
+      return [yr];
+    } else {
+      return labels.filter(l => l.startsWith(yr.toString()));
+    }
+  }
+  return labels;
+}
+
+function applyUnit(val) {
+  if (currentUnit === 'mlrd') return Math.round(val / 10) / 100;
+  return Math.round(val * 100) / 100;
+}
+
+function fmtNum(val) {
+  if (val === undefined || val === null || isNaN(val)) return '—';
+  const v = applyUnit(val);
+  const abs = Math.abs(v);
+  let formatted;
+  if (abs >= 1000) formatted = abs.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  else formatted = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return v < 0 ? `-${formatted}` : formatted;
+}
+
+// ===== FORECASTING =====
+function generateForecast(seriesKey, quarters = 12) {
+  const data = RAW_DATA.series[seriesKey];
+  if (!data || data.length < 8) return [];
+  
+  const n = data.length;
+  // Seasonal decomposition (4-quarter cycle)
+  const seasonIdx = [0, 1, 2, 3];
+  const seasonAvg = seasonIdx.map(si => {
+    let sum = 0, count = 0;
+    for (let i = si; i < n; i += 4) {
+      sum += data[i]; count++;
+    }
+    return sum / count;
+  });
+  const grandMean = seasonAvg.reduce((a, b) => a + b, 0) / 4;
+  const seasonCoeff = seasonAvg.map(s => grandMean !== 0 ? s / grandMean : 1);
+  
+  // Trend from last 8 quarters
+  const recent = data.slice(-8);
+  const trendPerQ = (recent[7] - recent[0]) / 7;
+  
+  // Damping factor for trend
+  const dampFactor = 0.92;
+  
+  const forecast = [];
+  let lastVal = data[n - 1];
+  
+  for (let i = 0; i < quarters; i++) {
+    const si = (n + i) % 4;
+    const dampedTrend = trendPerQ * Math.pow(dampFactor, i + 1);
+    let nextVal = lastVal + dampedTrend;
+    // Apply seasonal adjustment
+    if (Math.abs(grandMean) > 0.01) {
+      nextVal = nextVal * seasonCoeff[si] / (seasonCoeff[(si + 3) % 4] || 1);
+    }
+    forecast.push(Math.round(nextVal * 100) / 100);
+    lastVal = nextVal;
+  }
+  return forecast;
+}
+
+function getForecastLabels() {
+  const labels = [];
+  for (let y = 2026; y <= 2028; y++) {
+    for (let q = 1; q <= 4; q++) {
+      labels.push(`${y} Q${q}`);
+    }
+  }
+  return labels;
+}
+
+// ===== CHART CREATION =====
+function destroyCharts() {
+  Object.values(charts).forEach(c => { if (c) c.destroy(); });
+  charts = {};
+}
+
+function createChart(canvasId, config) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  const chart = new Chart(ctx, config);
+  charts[canvasId] = chart;
+  return chart;
+}
+
+function makeAreaConfig(labels, datasets, stacked = false) {
+  return {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1d23',
+          titleFont: { family: 'DM Sans', size: 12 },
+          bodyFont: { family: 'DM Sans', size: 12 },
+          padding: 10,
+          cornerRadius: 6,
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.raw)} ${t(currentUnit)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'DM Sans', size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 }
+        },
+        y: {
+          grid: { color: '#f0f1f3' },
+          ticks: {
+            font: { family: 'DM Sans', size: 11 },
+            callback: v => currentUnit === 'mlrd' ? (v/1000).toFixed(1) : v.toLocaleString()
+          }
+        }
+      }
+    }
+  };
+}
+
+function makeBarConfig(labels, datasets, stacked = false) {
+  return {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1d23',
+          titleFont: { family: 'DM Sans', size: 12 },
+          bodyFont: { family: 'DM Sans', size: 12 },
+          padding: 10, cornerRadius: 6,
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.raw)} ${t(currentUnit)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked,
+          grid: { display: false },
+          ticks: { font: { family: 'DM Sans', size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 }
+        },
+        y: {
+          stacked,
+          grid: { color: '#f0f1f3' },
+          ticks: { font: { family: 'DM Sans', size: 11 } }
+        }
+      }
+    }
+  };
+}
+
+// ===== KPI CARDS =====
+function renderKPIs() {
+  const grid = document.getElementById('kpiGrid');
+  const series = RAW_DATA.series;
+  
+  const kpis = [
+    { key: 'current_account', label: t('ca'), cls: 'ca' },
+    { key: 'financial_account', label: t('fa'), cls: 'fa' },
+    { key: 'goods_services_balance', label: t('tb'), cls: 'tb' },
+    { key: 'fdi_liabilities', label: t('fdi'), cls: 'fdi' },
+    { key: 'capital_account', label: t('ka'), cls: 'ka' },
+  ];
+  
+  let html = '';
+  kpis.forEach((kpi, idx) => {
+    const data = getSeries(kpi.key);
+    const lastVal = data[data.length - 1] || 0;
+    const prevVal = data.length > 1 ? data[data.length - 2] : 0;
+    const change = prevVal !== 0 ? ((lastVal - prevVal) / Math.abs(prevVal) * 100) : 0;
+    const isPos = change >= 0;
+    
+    const labels = getFilteredLabels();
+    const lastLabel = labels[labels.length - 1] || '';
+    
+    html += `
+    <div class="kpi-card ${kpi.cls}">
+      <div class="kpi-label">${kpi.label}</div>
+      <div class="kpi-value">
+        ${fmtNum(lastVal)}
+        <span class="kpi-unit">${t(currentUnit)}</span>
+      </div>
+      <span class="kpi-change ${isPos ? 'positive' : 'negative'}">
+        ${isPos ? '&#9650;' : '&#9660;'} ${Math.abs(change).toFixed(1)}% ${t('change')}
+      </span>
+      <div class="kpi-period">${lastLabel}</div>
+      <div class="kpi-sparkline"><canvas id="spark_${idx}" height="40"></canvas></div>
+    </div>`;
+  });
+  grid.innerHTML = html;
+  
+  // Sparklines
+  kpis.forEach((kpi, idx) => {
+    const data = getSeries(kpi.key);
+    const last20 = data.slice(-20);
+    const canvas = document.getElementById(`spark_${idx}`);
+    if (!canvas) return;
+    const colors = [
+      'var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'
+    ];
+    const colorMap = { ca: '#0f3d8c', fa: '#d4a012', tb: '#2e7d6e', fdi: '#8b4f9f', ka: '#c4552d' };
+    const color = colorMap[kpi.cls];
+    createChart(`spark_${idx}`, {
+      type: 'line',
+      data: {
+        labels: last20.map(() => ''),
+        datasets: [{
+          data: last20,
+          borderColor: color,
+          backgroundColor: color + '18',
+          fill: true,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
+  });
+}
+
+// ===== TAB RENDERING =====
+function renderTabs() {
+  const tabs = [
+    { id: 'overview', label: t('tab_overview') },
+    { id: 'trade', label: t('tab_trade') },
+    { id: 'financial', label: t('tab_financial') },
+    { id: 'forecast', label: t('tab_forecast') },
+    { id: 'table', label: t('tab_table') },
+  ];
+  document.getElementById('navTabs').innerHTML = tabs.map(tab =>
+    `<button class="nav-tab ${currentTab === tab.id ? 'active' : ''}" onclick="setTab('${tab.id}')">${tab.label}</button>`
+  ).join('');
+}
+
+function renderTabContent() {
+  const el = document.getElementById('tabContent');
+  switch (currentTab) {
+    case 'overview': renderOverview(el); break;
+    case 'trade': renderTrade(el); break;
+    case 'financial': renderFinancial(el); break;
+    case 'forecast': renderForecastTab(el); break;
+    case 'table': renderTable(el); break;
+  }
+}
+
+function renderOverview(el) {
+  const labels = getFilteredLabels();
+  el.innerHTML = `
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('ca')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartCA"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-1)"></div>${t('ca')}</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('tb')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartTB"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-3)"></div>${t('tb')}</div>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:20px">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('overall')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartOB"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-6)"></div>${t('overall')}</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('reserves')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartRes"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-5)"></div>${t('reserves')}</div>
+        </div>
+      </div>
+    </div>`;
+
+  const caData = getSeries('current_account');
+  createChart('chartCA', makeAreaConfig(labels, [{
+    label: t('ca'), data: caData,
+    borderColor: '#0f3d8c', backgroundColor: 'rgba(15,61,140,0.08)',
+    fill: true, borderWidth: 2, pointRadius: 0, tension: 0.3
+  }]));
+
+  const tbData = getSeries('goods_services_balance');
+  createChart('chartTB', makeAreaConfig(labels, [{
+    label: t('tb'), data: tbData,
+    borderColor: '#2e7d6e', backgroundColor: 'rgba(46,125,110,0.08)',
+    fill: true, borderWidth: 2, pointRadius: 0, tension: 0.3
+  }]));
+
+  const obData = getSeries('overall_balance');
+  createChart('chartOB', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: t('overall'), data: obData,
+        backgroundColor: obData.map(v => v >= 0 ? 'rgba(74,144,217,0.7)' : 'rgba(196,30,30,0.5)'),
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1a1d23', titleFont: { family: 'DM Sans', size: 12 },
+        bodyFont: { family: 'DM Sans', size: 12 }, padding: 10, cornerRadius: 6,
+        callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.raw)} ${t(currentUnit)}` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+        y: { grid: { color: '#f0f1f3' }, ticks: { font: { family: 'DM Sans', size: 11 } } }
+      }
+    }
+  });
+
+  const resData = getSeries('reserve_assets');
+  createChart('chartRes', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: t('reserves'), data: resData,
+        backgroundColor: resData.map(v => v >= 0 ? 'rgba(196,85,45,0.7)' : 'rgba(196,85,45,0.3)'),
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1a1d23', padding: 10, cornerRadius: 6,
+        callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.raw)} ${t(currentUnit)}` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+        y: { grid: { color: '#f0f1f3' }, ticks: { font: { family: 'DM Sans', size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderTrade(el) {
+  const labels = getFilteredLabels();
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">${t('goods')}: ${t('export')} / ${t('import')}</span>
+      </div>
+      <div class="chart-container"><canvas id="chartGoods"></canvas></div>
+      <div class="legend-custom">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--chart-1)"></div>${t('goods_exp')}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--chart-5)"></div>${t('goods_imp')}</div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:20px">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('services')}: ${t('export')} / ${t('import')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartServices"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-2)"></div>${t('serv_exp')}</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-4)"></div>${t('serv_imp')}</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('primary_inc')} / ${t('secondary_inc')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartIncome"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-3)"></div>${t('primary_inc')}</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-6)"></div>${t('secondary_inc')}</div>
+        </div>
+      </div>
+    </div>`;
+
+  createChart('chartGoods', makeAreaConfig(labels, [
+    { label: t('goods_exp'), data: getSeries('goods_export'), borderColor: '#0f3d8c', backgroundColor: 'rgba(15,61,140,0.06)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    { label: t('goods_imp'), data: getSeries('goods_import'), borderColor: '#c4552d', backgroundColor: 'rgba(196,85,45,0.06)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.3 },
+  ]));
+
+  createChart('chartServices', makeAreaConfig(labels, [
+    { label: t('serv_exp'), data: getSeries('services_export'), borderColor: '#d4a012', backgroundColor: 'rgba(212,160,18,0.06)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    { label: t('serv_imp'), data: getSeries('services_import'), borderColor: '#8b4f9f', backgroundColor: 'rgba(139,79,159,0.06)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.3 },
+  ]));
+
+  // Net income series
+  const pricData = getSeries('primary_income_credit');
+  const pridData = getSeries('primary_income_debit');
+  const secicData = getSeries('secondary_income_credit');
+  const secidData = getSeries('secondary_income_debit');
+  const priNet = pricData.map((v, i) => Math.round((v - (pridData[i]||0)) * 100) / 100);
+  const secNet = secicData.map((v, i) => Math.round((v - (secidData[i]||0)) * 100) / 100);
+
+  createChart('chartIncome', makeBarConfig(labels, [
+    { label: t('primary_inc'), data: priNet, backgroundColor: 'rgba(46,125,110,0.7)', borderRadius: 2 },
+    { label: t('secondary_inc'), data: secNet, backgroundColor: 'rgba(74,144,217,0.7)', borderRadius: 2 },
+  ], false));
+}
+
+function renderFinancial(el) {
+  const labels = getFilteredLabels();
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">${t('fa')}</span>
+      </div>
+      <div class="chart-container"><canvas id="chartFA"></canvas></div>
+      <div class="legend-custom">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--chart-2)"></div>${t('fa')}</div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:20px">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('fdi')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartFDI"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-4)"></div>${t('fdi_in')}</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(139,79,159,0.4)"></div>${t('fdi_out')}</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">${t('ka')}</span>
+        </div>
+        <div class="chart-container"><canvas id="chartKA"></canvas></div>
+        <div class="legend-custom">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--chart-5)"></div>${t('ka')}</div>
+        </div>
+      </div>
+    </div>`;
+
+  createChart('chartFA', makeAreaConfig(labels, [{
+    label: t('fa'), data: getSeries('financial_account'),
+    borderColor: '#d4a012', backgroundColor: 'rgba(212,160,18,0.08)',
+    fill: true, borderWidth: 2, pointRadius: 0, tension: 0.3
+  }]));
+
+  createChart('chartFDI', makeBarConfig(labels, [
+    { label: t('fdi_in'), data: getSeries('fdi_liabilities'), backgroundColor: 'rgba(139,79,159,0.7)', borderRadius: 2 },
+    { label: t('fdi_out'), data: getSeries('fdi_assets'), backgroundColor: 'rgba(139,79,159,0.25)', borderRadius: 2 },
+  ], false));
+
+  createChart('chartKA', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: t('ka'), data: getSeries('capital_account'),
+        backgroundColor: 'rgba(196,85,45,0.7)', borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1a1d23', padding: 10, cornerRadius: 6,
+        callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.raw)} ${t(currentUnit)}` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 } },
+        y: { grid: { color: '#f0f1f3' }, ticks: { font: { family: 'DM Sans', size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderForecastTab(el) {
+  const forecastKeys = [
+    { key: 'current_account', label: t('ca'), color: '#0f3d8c' },
+    { key: 'goods_services_balance', label: t('tb'), color: '#2e7d6e' },
+    { key: 'financial_account', label: t('fa'), color: '#d4a012' },
+    { key: 'fdi_liabilities', label: t('fdi'), color: '#8b4f9f' },
+  ];
+
+  let html = `
+    <div class="section" style="background:var(--accent-light);border-color:var(--forecast-border);margin-bottom:20px;">
+      <div class="section-header">
+        <span class="section-title">${t('forecastMethod')}</span>
+        <span class="forecast-badge">${t('forecast')} 2026–2028</span>
+      </div>
+      <p style="font-size:13px;color:#5a6069;line-height:1.7;">${t('forecastDesc')}</p>
+    </div>`;
+
+  forecastKeys.forEach((item, i) => {
+    html += `
+    <div class="section" style="margin-bottom:20px;">
+      <div class="section-header">
+        <span class="section-title">${item.label}</span>
+        <span class="forecast-badge">${t('forecast')}</span>
+      </div>
+      <div class="chart-container"><canvas id="forecast_${i}"></canvas></div>
+      <div class="legend-custom">
+        <div class="legend-item"><div class="legend-dot" style="background:${item.color}"></div>${t('actual')}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:${item.color};opacity:0.4"></div>${t('forecast')}</div>
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+
+  forecastKeys.forEach((item, i) => {
+    const actualData = RAW_DATA.series[item.key];
+    const forecastData = generateForecast(item.key, 12);
+    
+    // Last 20 quarters of actual + 12 forecast
+    const recentActual = actualData.slice(-20);
+    const actualLabels = RAW_DATA.quarters.slice(-20).map(q => {
+      const p = parseQuarter(q);
+      return p ? `${p.year} Q${p.q}` : q;
+    });
+    const fLabels = getForecastLabels();
+    const allLabels = [...actualLabels, ...fLabels];
+    
+    const actualLine = [...recentActual, ...Array(12).fill(null)];
+    const forecastLine = [...Array(19).fill(null), recentActual[recentActual.length - 1], ...forecastData];
+    
+    // Confidence bands
+    const confUpper = forecastLine.map((v, idx) => {
+      if (v === null) return null;
+      if (idx < 20) return v;
+      const spread = Math.abs(v) * 0.15 * ((idx - 19) / 12 + 0.5);
+      return v + spread;
+    });
+    const confLower = forecastLine.map((v, idx) => {
+      if (v === null) return null;
+      if (idx < 20) return v;
+      const spread = Math.abs(v) * 0.15 * ((idx - 19) / 12 + 0.5);
+      return v - spread;
+    });
+
+    createChart(`forecast_${i}`, {
+      type: 'line',
+      data: {
+        labels: allLabels,
+        datasets: [
+          {
+            label: t('confidence') + ' (upper)',
+            data: confUpper,
+            borderColor: 'transparent',
+            backgroundColor: item.color + '12',
+            fill: '+1',
+            pointRadius: 0,
+            tension: 0.3,
+          },
+          {
+            label: t('confidence') + ' (lower)',
+            data: confLower,
+            borderColor: 'transparent',
+            backgroundColor: 'transparent',
+            fill: false,
+            pointRadius: 0,
+            tension: 0.3,
+          },
+          {
+            label: t('actual'),
+            data: actualLine,
+            borderColor: item.color,
+            backgroundColor: item.color + '10',
+            fill: true,
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.3,
+          },
+          {
+            label: t('forecast'),
+            data: forecastLine,
+            borderColor: item.color,
+            borderDash: [6, 4],
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.3,
+          },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1d23', padding: 10, cornerRadius: 6,
+            filter: (item) => !item.dataset.label.includes(t('confidence')),
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.raw)} ${t(currentUnit)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { family: 'DM Sans', size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 16 }
+          },
+          y: {
+            grid: { color: '#f0f1f3' },
+            ticks: { font: { family: 'DM Sans', size: 11 } }
+          }
+        }
+      }
+    });
+  });
+}
+
+function renderTable(el) {
+  const labels = getFilteredLabels();
+  const rows = [
+    { key: 'current_account', label: t('ca'), cls: 'total-row', indent: '' },
+    { key: 'goods_export', label: t('goods_exp'), cls: '', indent: 'indent-1' },
+    { key: 'goods_import', label: t('goods_imp'), cls: '', indent: 'indent-1' },
+    { key: 'services_export', label: t('serv_exp'), cls: '', indent: 'indent-1' },
+    { key: 'services_import', label: t('serv_imp'), cls: '', indent: 'indent-1' },
+    { key: 'goods_services_balance', label: t('tb'), cls: 'total-row', indent: 'indent-1' },
+    { key: 'primary_inc_net', label: t('primary_inc'), cls: '', indent: 'indent-1', computed: true },
+    { key: 'secondary_inc_net', label: t('secondary_inc'), cls: '', indent: 'indent-1', computed: true },
+    { key: 'capital_account', label: t('ka'), cls: 'total-row', indent: '' },
+    { key: 'financial_account', label: t('fa'), cls: 'total-row', indent: '' },
+    { key: 'fdi_liabilities', label: t('fdi_in'), cls: '', indent: 'indent-1' },
+    { key: 'fdi_assets', label: t('fdi_out'), cls: '', indent: 'indent-1' },
+    { key: 'errors_omissions', label: t('errors'), cls: '', indent: '' },
+    { key: 'overall_balance', label: t('overall'), cls: 'total-row', indent: '' },
+    { key: 'reserve_assets', label: t('reserves'), cls: 'total-row', indent: '' },
+  ];
+  
+  // Show last N columns
+  const maxCols = currentYear !== 'all' ? labels.length : Math.min(labels.length, currentPeriod === 'annual' ? 21 : 12);
+  const displayLabels = labels.slice(-maxCols);
+  
+  let html = `<div class="section" style="overflow-x:auto;">
+    <div class="section-header"><span class="section-title">${t('tab_table')}</span></div>
+    <table class="data-table">
+    <thead><tr><th style="min-width:200px">${currentLang === 'uz' ? "Ko'rsatkich" : currentLang === 'en' ? "Indicator" : "Показатель"}</th>`;
+  
+  displayLabels.forEach(l => { html += `<th class="num" style="min-width:90px">${l}</th>`; });
+  html += `</tr></thead><tbody>`;
+  
+  rows.forEach(row => {
+    let data;
+    if (row.key === 'primary_inc_net') {
+      const cr = getSeries('primary_income_credit');
+      const db = getSeries('primary_income_debit');
+      data = cr.map((v, i) => Math.round((v - (db[i]||0)) * 100) / 100);
+    } else if (row.key === 'secondary_inc_net') {
+      const cr = getSeries('secondary_income_credit');
+      const db = getSeries('secondary_income_debit');
+      data = cr.map((v, i) => Math.round((v - (db[i]||0)) * 100) / 100);
+    } else {
+      data = getSeries(row.key);
+    }
+    
+    const displayData = data.slice(-maxCols);
+    html += `<tr class="${row.cls}"><td class="${row.indent}">${row.label}</td>`;
+    displayData.forEach(v => {
+      const cls = v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+      html += `<td class="num ${cls}">${fmtNum(v)}</td>`;
+    });
+    html += `</tr>`;
+  });
+  
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+}
+
+// ===== CONTROLS =====
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  updateAll();
+}
+
+function setPeriod(p) {
+  currentPeriod = p;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  if (p === 'quarterly') document.getElementById('btnQuarterly').classList.add('active');
+  else document.getElementById('btnAnnual').classList.add('active');
+  updateAll();
+}
+
+function setYear(y) { currentYear = y; updateAll(); }
+function setUnit(u) { currentUnit = u; updateAll(); }
+function setTab(tab) { currentTab = tab; destroyCharts(); renderTabs(); renderTabContent(); renderKPIs(); }
+
+function updateAll() {
+  // Update header
+  document.getElementById('mainTitle').textContent = t('title');
+  document.getElementById('mainSubtitle').textContent = t('subtitle');
+  document.getElementById('labelPeriod').textContent = t('period');
+  document.getElementById('btnQuarterly').textContent = t('quarterly');
+  document.getElementById('btnAnnual').textContent = t('annual');
+  document.getElementById('labelYear').textContent = t('year');
+  document.getElementById('labelUnit').textContent = t('unit');
+  document.getElementById('footerText').textContent = t('footer');
+  
+  // Year selector
+  const yearSel = document.getElementById('yearSelect');
+  const curVal = yearSel.value || 'all';
+  const years = getYears();
+  yearSel.innerHTML = `<option value="all">${t('allYears')}</option>` +
+    years.map(y => `<option value="${y}" ${curVal == y ? 'selected' : ''}>${y}</option>`).join('');
+  if (curVal !== 'all' && years.includes(parseInt(curVal))) yearSel.value = curVal;
+  
+  // Unit selector
+  const unitSel = document.getElementById('unitSelect');
+  unitSel.innerHTML = `<option value="mln" ${currentUnit==='mln'?'selected':''}>${t('mln')}</option>
+    <option value="mlrd" ${currentUnit==='mlrd'?'selected':''}>${t('mlrd')}</option>`;
+  
+  destroyCharts();
+  renderKPIs();
+  renderTabs();
+  renderTabContent();
+}
+
+// ===== INIT =====
+updateAll();
+</script>
+</body>
+</html>
